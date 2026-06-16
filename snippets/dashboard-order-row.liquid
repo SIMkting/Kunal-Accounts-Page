@@ -1,0 +1,36 @@
+{%- comment -%}
+  Renders a single order row for the dashboard.
+  Usage: {%- render 'dashboard-order-row', order: order -%}
+{%- endcomment -%}
+{%- assign first_item = order.line_items.first -%}
+<div class="acct-order">
+  <div class="acct-order__media">
+    {%- if first_item.image -%}
+      {{ first_item.image | image_url: width: 120 | image_tag: loading: 'lazy', alt: first_item.title, class: 'acct-order__img' }}
+    {%- else -%}
+      <div class="acct-order__img acct-order__img--ph"></div>
+    {%- endif -%}
+  </div>
+  <div class="acct-order__info">
+    <p class="acct-order__title">
+      {{ first_item.title | default: 'Order' }}
+      {%- if order.line_items.size > 1 %} <span class="acct-order__more">+{{ order.line_items.size | minus: 1 }} more</span>{% endif -%}
+    </p>
+    <p class="acct-order__meta">
+      {{ order.name }} · {{ order.created_at | date: "%b %d, %Y" }}
+    </p>
+  </div>
+  <div class="acct-order__status">
+    {%- if order.cancelled -%}
+      <span class="acct-tag acct-tag--cancelled">Cancelled</span>
+    {%- elsif order.fulfillment_status -%}
+      <span class="acct-tag acct-tag--fulfilled">{{ order.fulfillment_status_label }}</span>
+    {%- else -%}
+      <span class="acct-tag">{{ order.financial_status_label }}</span>
+    {%- endif -%}
+  </div>
+  <div class="acct-order__price">{{ order.total_price | money }}</div>
+  <div class="acct-order__action">
+    <a class="acct-btn acct-btn--sm" href="{{ order.customer_url }}">View Details</a>
+  </div>
+</div>

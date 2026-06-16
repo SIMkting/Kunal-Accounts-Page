@@ -1,0 +1,54 @@
+{%- comment -%}
+  Wishlist toggle button (no app, no backend — localStorage based).
+  Add to your product template and/or product cards:
+      {%- render 'wishlist-button', product: product -%}
+  Saves the product handle under "acct:wishlist"; the dashboard reads the
+  same key to render the wishlist grid and the "Wishlist Items" count.
+
+  Note: this is a device-local wishlist. To make it follow a logged-in
+  customer across devices, persist the handles to a customer metafield via
+  an App Proxy (Phase 2) — the storage key/format stays the same.
+{%- endcomment -%}
+{%- assign wl_handle = product.handle -%}
+<button
+  class="acct-wishlist-btn"
+  type="button"
+  data-wishlist-toggle
+  data-handle="{{ wl_handle }}"
+  aria-pressed="false"
+  aria-label="Add to wishlist"
+>
+  <span class="acct-wishlist-btn__icon" aria-hidden="true">♡</span>
+</button>
+
+<script>
+  (function () {
+    var KEY = 'acct:wishlist';
+    var btn = document.currentScript.previousElementSibling;
+    if (!btn || !btn.hasAttribute('data-wishlist-toggle')) { return; }
+    var handle = btn.getAttribute('data-handle');
+
+    function read() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+    function write(list) { localStorage.setItem(KEY, JSON.stringify(list)); }
+    function sync() {
+      var on = read().indexOf(handle) !== -1;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('is-active', on);
+      btn.querySelector('.acct-wishlist-btn__icon').textContent = on ? '♥' : '♡';
+    }
+
+    btn.addEventListener('click', function () {
+      var list = read();
+      var i = list.indexOf(handle);
+      if (i === -1) { list.unshift(handle); } else { list.splice(i, 1); }
+      write(list);
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+<style>
+  .acct-wishlist-btn { background: #fff; border: 1px solid #ececf1; border-radius: 999px; width: 40px; height: 40px; cursor: pointer; font-size: 18px; line-height: 1; color: #c92a2a; }
+  .acct-wishlist-btn.is-active { background: #ffe3e3; }
+</style>

@@ -1,0 +1,215 @@
+{%- comment -%}
+  Customer Account Dashboard
+  --------------------------
+  A native, app-free customer dashboard built on the Liquid `customer` object.
+  Assign this section to a page via templates/page.customer-dashboard.json,
+  then create a Page in admin using that template (suggested handle:
+  "customer-dashboard"). Point your header account icon and the post-login
+  redirect at /pages/customer-dashboard.
+
+  Everything here is server-rendered by Shopify (CDN-scaled, no backend).
+  Wishlist + Recently Viewed are client-side (localStorage) so they also
+  need no app and no server. See snippets/wishlist-button.liquid and
+  snippets/track-recently-viewed.liquid for the product-page hooks.
+{%- endcomment -%}
+
+{{ 'customer-dashboard.css' | asset_url | stylesheet_tag }}
+
+{%- if customer == nil -%}
+  {%- comment -%} Guard: send logged-out visitors to login. {%- endcomment -%}
+  <div class="acct-dashboard acct-dashboard--guest">
+    <div class="acct-card acct-card--center">
+      <h1 class="acct-card__title">{{ section.settings.guest_heading }}</h1>
+      <p>{{ section.settings.guest_text }}</p>
+      <a class="acct-btn" href="{{ routes.account_login_url }}">Log in</a>
+      <a class="acct-btn acct-btn--ghost" href="{{ routes.account_register_url }}">Create account</a>
+    </div>
+  </div>
+{%- else -%}
+  {%- assign recent_limit = section.settings.recent_orders_count -%}
+  <div
+    class="acct-dashboard"
+    data-customer-dashboard
+    style="--acct-primary: {{ section.settings.primary_color }}; --acct-primary-soft: {{ section.settings.primary_color }}1a;"
+  >
+    {%- comment -%} ---------- Sidebar ---------- {%- endcomment -%}
+    <aside class="acct-sidebar">
+      <div class="acct-sidebar__user">
+        <p class="acct-sidebar__name">{{ customer.name | default: customer.email }}</p>
+        <p class="acct-sidebar__email">{{ customer.email }}</p>
+      </div>
+      <nav class="acct-nav" aria-label="Account navigation">
+        <button class="acct-nav__item is-active" data-panel-target="dashboard" type="button">Dashboard</button>
+        <button class="acct-nav__item" data-panel-target="orders" type="button">My Orders</button>
+        <button class="acct-nav__item" data-panel-target="profile" type="button">My Profile</button>
+        <button class="acct-nav__item" data-panel-target="wishlist" type="button">My Wishlist <span class="acct-badge" data-wishlist-count>0</span></button>
+        <button class="acct-nav__item" data-panel-target="recently" type="button">Recently Viewed</button>
+        <a class="acct-nav__item" href="{{ routes.account_url }}">Change Password</a>
+      </nav>
+      <a class="acct-nav__logout" href="{{ routes.account_logout_url }}">Log out</a>
+    </aside>
+
+    {%- comment -%} ---------- Main ---------- {%- endcomment -%}
+    <main class="acct-main">
+
+      {%- comment -%} ===== Panel: Dashboard ===== {%- endcomment -%}
+      <section class="acct-panel is-active" data-panel="dashboard">
+        <h1 class="acct-panel__title">My Account Dashboard</h1>
+
+        <div class="acct-stats">
+          <div class="acct-stat">
+            <div class="acct-stat__label">Total Orders</div>
+            <div class="acct-stat__value">{{ customer.orders_count }}</div>
+          </div>
+          <div class="acct-stat">
+            <div class="acct-stat__label">Total Spent</div>
+            <div class="acct-stat__value">{{ customer.total_spent | money }}</div>
+          </div>
+          <div class="acct-stat">
+            <div class="acct-stat__label">Wishlist Items</div>
+            <div class="acct-stat__value" data-wishlist-count>0</div>
+          </div>
+        </div>
+
+        <div class="acct-card">
+          <div class="acct-card__head">
+            <h2 class="acct-card__title">Your Profile</h2>
+            <a class="acct-link" href="{{ routes.account_url }}">Edit</a>
+          </div>
+          <div class="acct-profile">
+            <div><span class="acct-profile__k">Name</span><span class="acct-profile__v">{{ customer.name | default: '—' }}</span></div>
+            <div><span class="acct-profile__k">Email Address</span><span class="acct-profile__v">{{ customer.email | default: '—' }}</span></div>
+            <div><span class="acct-profile__k">Phone Number</span><span class="acct-profile__v">{{ customer.phone | default: '—' }}</span></div>
+          </div>
+        </div>
+
+        <div class="acct-card">
+          <div class="acct-card__head">
+            <h2 class="acct-card__title">Recent Orders</h2>
+            <button class="acct-link" data-panel-target="orders" type="button">View All Orders</button>
+          </div>
+          {%- if customer.orders.size > 0 -%}
+            <div class="acct-orders">
+              {%- for order in customer.orders limit: recent_limit -%}
+                {%- render 'dashboard-order-row', order: order -%}
+              {%- endfor -%}
+            </div>
+          {%- else -%}
+            <p class="acct-empty">You haven’t placed any orders yet.</p>
+          {%- endif -%}
+        </div>
+      </section>
+
+      {%- comment -%} ===== Panel: All Orders ===== {%- endcomment -%}
+      <section class="acct-panel" data-panel="orders">
+        <h1 class="acct-panel__title">My Orders</h1>
+        <div class="acct-card">
+          {%- if customer.orders.size > 0 -%}
+            <div class="acct-orders">
+              {%- for order in customer.orders -%}
+                {%- render 'dashboard-order-row', order: order -%}
+              {%- endfor -%}
+            </div>
+          {%- else -%}
+            <p class="acct-empty">You haven’t placed any orders yet.</p>
+          {%- endif -%}
+        </div>
+      </section>
+
+      {%- comment -%} ===== Panel: Profile ===== {%- endcomment -%}
+      <section class="acct-panel" data-panel="profile">
+        <h1 class="acct-panel__title">My Profile</h1>
+        <div class="acct-card">
+          <div class="acct-card__head">
+            <h2 class="acct-card__title">Personal Details</h2>
+            <a class="acct-link" href="{{ routes.account_url }}">Edit in account</a>
+          </div>
+          <div class="acct-profile">
+            <div><span class="acct-profile__k">Name</span><span class="acct-profile__v">{{ customer.name | default: '—' }}</span></div>
+            <div><span class="acct-profile__k">Email Address</span><span class="acct-profile__v">{{ customer.email | default: '—' }}</span></div>
+            <div><span class="acct-profile__k">Phone Number</span><span class="acct-profile__v">{{ customer.phone | default: '—' }}</span></div>
+          </div>
+        </div>
+        <div class="acct-card">
+          <div class="acct-card__head">
+            <h2 class="acct-card__title">Default Address</h2>
+            <a class="acct-link" href="{{ routes.account_addresses_url }}">Manage addresses</a>
+          </div>
+          {%- if customer.default_address -%}
+            <address class="acct-address">{{ customer.default_address | format_address }}</address>
+          {%- else -%}
+            <p class="acct-empty">No address saved yet.</p>
+          {%- endif -%}
+        </div>
+      </section>
+
+      {%- comment -%} ===== Panel: Wishlist (client-side, no app) ===== {%- endcomment -%}
+      <section class="acct-panel" data-panel="wishlist">
+        <h1 class="acct-panel__title">My Wishlist</h1>
+        <div class="acct-card">
+          <div class="acct-grid" data-wishlist-grid>
+            <p class="acct-empty" data-wishlist-empty>Your wishlist is empty. Tap the heart on any product to save it here.</p>
+          </div>
+        </div>
+      </section>
+
+      {%- comment -%} ===== Panel: Recently Viewed (client-side, no app) ===== {%- endcomment -%}
+      <section class="acct-panel" data-panel="recently">
+        <h1 class="acct-panel__title">Recently Viewed</h1>
+        <div class="acct-card">
+          <div class="acct-grid" data-recently-grid>
+            <p class="acct-empty" data-recently-empty>Products you view will show up here.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  {{ 'customer-dashboard.js' | asset_url | script_tag }}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Customer Dashboard",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "color",
+      "id": "primary_color",
+      "label": "Primary color",
+      "default": "#4B2E83"
+    },
+    {
+      "type": "range",
+      "id": "recent_orders_count",
+      "label": "Recent orders to show on dashboard",
+      "min": 3,
+      "max": 10,
+      "step": 1,
+      "default": 5
+    },
+    {
+      "type": "header",
+      "content": "Logged-out message"
+    },
+    {
+      "type": "text",
+      "id": "guest_heading",
+      "label": "Heading",
+      "default": "Please log in"
+    },
+    {
+      "type": "text",
+      "id": "guest_text",
+      "label": "Text",
+      "default": "Log in to view your orders, profile and wishlist."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Customer Dashboard"
+    }
+  ]
+}
+{% endschema %}

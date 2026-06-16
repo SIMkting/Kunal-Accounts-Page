@@ -1,0 +1,24 @@
+{%- comment -%}
+  Recently Viewed tracker (no app, no backend).
+  Drop this into your product template (sections/main-product.liquid or
+  templates/product.*), anywhere inside the product page:
+      {%- render 'track-recently-viewed' -%}
+  It records the current product's handle in localStorage; the dashboard
+  reads "acct:recentlyViewed" to render the Recently Viewed grid.
+{%- endcomment -%}
+{%- if template contains 'product' and product -%}
+  <script>
+    (function () {
+      var KEY = 'acct:recentlyViewed';
+      var MAX = 12;
+      var handle = {{ product.handle | json }};
+      try {
+        var list = JSON.parse(localStorage.getItem(KEY)) || [];
+        list = list.filter(function (h) { return h !== handle; });
+        list.unshift(handle);
+        if (list.length > MAX) list = list.slice(0, MAX);
+        localStorage.setItem(KEY, JSON.stringify(list));
+      } catch (e) {}
+    })();
+  </script>
+{%- endif -%}
